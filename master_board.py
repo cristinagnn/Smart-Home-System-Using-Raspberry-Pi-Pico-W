@@ -88,6 +88,21 @@ def add_new_user(card, users_card_id):
         save_users_to_file(users_card_id)
         print(f"Added new user {card} with temperatures: Winter {winter_temp}, Summer {summer_temp}")
 
+# Delete a user 
+def delete_user(card, users_card_id):
+    if card in users_card_id:
+        del users_card_id[card]
+        save_users_to_file(users_card_id)
+        print(f"Deleted user {card}.")
+    else:
+        print(f"User {card} not found.")
+
+# Delete all users 
+def clear_all_users(users_card_id):
+    users_card_id.clear()
+    save_users_to_file(users_card_id)
+    print("All users have been deleted.")
+    
 # Callback function to handle incoming messages
 def message_callback(topic, msg):
     print(msg)
@@ -100,13 +115,13 @@ def main():
     global mode
     users_card_id = load_users_from_file()
     setup_button()
-
+    # delete_user(2172007786, users_card_id)
     client = MQTTClient(client_id, broker)
     client.set_callback(message_callback)
     client.connect()
     client.subscribe(topic_temperature)
     print('Connected to MQTT broker and subscribed to topic')
-
+    
     print("Bring TAG closer...")
     while True:
         reader.init()
