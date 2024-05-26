@@ -65,6 +65,9 @@ def message_callback(topic, msg):
             green.off()
             red.on()
 def main():
+    red.on()
+    green.off()
+    
     client = MQTTClient(client_id, broker)
     client.set_callback(message_callback)
     
@@ -90,6 +93,7 @@ def main():
         max_adc = 65535
         temperature = map_value(filtered_adc_value, min_adc, max_adc, 15, 40)
         
+        # Send current temperature at periodic interval of times
         current_time = utime.ticks_ms()
         if utime.ticks_diff(current_time, last_publish_time) >= publish_interval:
             client.publish(topic_temperature, json.dumps({'room_temperature': temperature}))
