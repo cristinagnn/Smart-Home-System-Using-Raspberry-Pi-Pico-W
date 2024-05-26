@@ -21,7 +21,6 @@ client_id = 'pico_master'
 topic_ac_control = b'ac_control'
 topic_heating_control = b'heating_control'
 topic_temperature = b'room_temperature'
-topic_heating_manual = b'heating_manual'
 topic_heating_manual_temp = b'heating_manual_temp'
 topic_mode = b'control_mode'
 
@@ -177,8 +176,6 @@ def button_handler(pin):
             mode = 'manual' if mode == 'automatic' else 'automatic'
             print(f"Mode changed to: {mode}")
             client.publish(topic_mode, json.dumps({'mode': mode}))
-            if mode == 'manual':
-                client.publish(topic_heating_manual, json.dumps({'request': 'send_manual_temperature'}))
             button_pressed = True
         else:
             button_pressed = False
