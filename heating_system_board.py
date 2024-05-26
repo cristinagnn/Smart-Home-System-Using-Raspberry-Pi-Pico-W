@@ -1,70 +1,69 @@
-from machine import ADC, Pin
-from picozero import LED
+import network
 import utime
+import json
+from machine import Pin
+from picozero import LED
+from umqtt.simple import MQTTClient
 
-# Initialize pins for the LEDs
+# Load configuration from file
+def load_config():
+    with open('config.json', 'r') as f:
+        return json.load(f)
+
+config = load_config()
+ssid = config['ssid']
+password = config['password']
+broker = config['broker_ip']
+
+client_id = 'heating_system_board'
+topic_control = b'heating_control'
+
 green = LED(15)
 red = LED(14)
 
-# Initialize ADC for the potentiometer
-potentiometer = ADC(Pin(26))  # GP26 corresponds to ADC0
+def connect_to_wifi():
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    wlan.connect(ssid, password)
+    while not wlan.isconnected():
+        print('Connecting to Wi-Fi...')
+        utime.sleep(1)
+    print('Connected to Wi-Fi:', wlan.ifconfig())
+    return wlan.isconnected()
 
-# Moving average filter variables
-num_samples = 10  
-adc_buffer = [0] * num_samples
-buffer_index = 0
-
-# Exponential moving average variables
-alpha = 0.3  
-ema_value = 0
-
-def read_potentiometer():
-    global buffer_index, ema_value
-    # Read the ADC value
-    adc_value = potentiometer.read_u16()
-    
-    # Update the buffer with the new reading
-    adc_buffer[buffer_index] = adc_value
-    buffer_index = (buffer_index + 1) % num_samples
-    
-    # Calculate the moving average of the buffer
-    moving_average = sum(adc_buffer) / num_samples
-    
-    # Update the EMA value
-    ema_value = (alpha * moving_average) + ((1 - alpha) * ema_value)
-    
-    return ema_value
-
-def map_value(value, from_low, from_high, to_low, to_high):
-    # Helper function to map one range of values to another
-    return to_low + ((value - from_low) / (from_high - from_low)) * (to_high - to_low)
-
-def main():
-    while True:
-        # Read the potentiometer and get the filtered value
-        filtered_adc_value = read_potentiometer()
-        
-        # The range of the ADC is from 0 to 65535
-        min_adc = 0
-        max_adc = 65535  
-        temperature = map_value(filtered_adc_value, min_adc, max_adc, 15, 40)
-        
-        # Print the set temperature
-        print(f"Set temperature: {temperature:.2f} °C")
-        
-        # While temperature lower than 24, heating system working
-        if (temperature < 24):
-            green.on()
+def message_callback(topic, msg):
+    data = json.loads(msg)
+    if 'command' in data:
+        command = data['command']
+        if command == 'start_heating':
+            print('Received start heating command')
             red.off()
-        else:
+            green.on()
+        elif command == 'stop_heating':
+            print('Received stop heating command')
             red.on()
             green.off()
 
-        # Sleep for a short while to avoid flooding the output
+def main():
+    global client
+    client = MQTTClient(client_id, broker)
+    client.set_callback(message_callback)
+    
+    if not connect_to_wifi():
+        return
+    
+    try:
+        client.connect()
+        client.subscribe(topic_control)
+        print('Connected to MQTT broker and subscribed to topic')
+    except Exception as e:
+        print(f'Failed to connect to MQTT broker: {e}')
+        return
+
+    while True:
+        client.check_msg()
         utime.sleep_ms(100)
 
-# Call the main function
 if __name__ == "__main__":
     main()
-
 
