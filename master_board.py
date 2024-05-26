@@ -52,7 +52,8 @@ reader = MFRC522(spi_id=spi_id, sck=sck, mosi=mosi, miso=miso, cs=cs, rst=rst)
 def load_users_from_file():
     try:
         with open('users_card_id.json', 'r') as f:
-            users_card_id = json.load(f)
+            file_content = f.read()
+            users_card_id = json.load(file_content)
             users_card_id = {int(k): v for k, v in users_card_id.items()}  # Convert keys back to int
             print("Loaded users from file.")
             return users_card_id
@@ -65,6 +66,9 @@ def load_users_from_file():
 def add_new_user(card, users_card_id):
     response = input("Do you want to add the user? (yes/no): ").strip().lower()
     if response == 'yes':
+        winter_temp = int(input("Enter preferred winter temperature: "))
+        summer_temp = int(input("Enter preferred summer temperature: "))
+        users_card_id[card] = {'winter': winter_temp, 'summer': summer_temp}
         save_users_to_file(users_card_id)
         print(f"Added new user {card} with temperatures: Winter {winter_temp}, Summer {summer_temp}")
 
@@ -89,9 +93,6 @@ def save_users_to_file(users_card_id):
             print("User data saved to file.")
     except OSError as e:
         print(f"Failed to save user data to file: {e}")
-
-
-
 
 users_card_id = load_users_from_file()
 current_user = None
