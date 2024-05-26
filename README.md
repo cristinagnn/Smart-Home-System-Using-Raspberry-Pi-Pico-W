@@ -32,5 +32,6 @@ The system uses three Raspberry Pi Pico W boards. The master unit manages user d
 
 **Electrical schematic**
 
-![schematic_electric](https://github.com/cristinagnn/Smart-Home-System-Using-Raspberry-Pi-Pico-W/assets/60398307/987dd42d-e30b-48d0-8bc1-c18fb3f70f0b)
+
+![proiect_cu_label](https://github.com/cristinagnn/Smart-Home-System-Using-Raspberry-Pi-Pico-W/assets/60398307/b292a421-699e-4cec-937a-cd7132d23ffa)
 
