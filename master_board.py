@@ -16,7 +16,7 @@ ssid = config['ssid']
 password = config['password']
 broker = config['broker_ip']
 
-# Those are the topics requred for communication between boards
+# Those are the topics required for communication between boards
 client_id = 'pico_master'
 topic_ac_control = b'ac_control'
 topic_heating_control = b'heating_control'
@@ -53,15 +53,14 @@ def load_users_from_file():
     try:
         with open('users_card_id.json', 'r') as f:
             file_content = f.read()
-            users_card_id = json.load(file_content)
+            users_card_id = json.loads(file_content)
             users_card_id = {int(k): v for k, v in users_card_id.items()}  # Convert keys back to int
             print("Loaded users from file.")
             return users_card_id
     except OSError:
         print("No users file found, starting with an empty dictionary.")
-    except json.JSONDecodeError:
-        print("Failed to decode JSON, starting with an empty dictionary.")
-    return {}
+    except Exception as e:
+        print(f"Failed to decode JSON, starting with an empty dictionary. Error: {e}")
 
 def add_new_user(card, users_card_id):
     response = input("Do you want to add the user? (yes/no): ").strip().lower()
@@ -89,13 +88,12 @@ def save_users_to_file(users_card_id):
     try:
         with open('users_card_id.json', 'w') as f:
             json.dump({str(k): v for k, v in users_card_id.items()}, f)  # Convert keys to str
-            json.dump({str(k): v for k, v in users_card_id.items()}, f)
             print("User data saved to file.")
     except OSError as e:
         print(f"Failed to save user data to file: {e}")
 
 users_card_id = load_users_from_file()
-current_user = None
+at_home_users = set()
 last_interrupt_time = 0
 debounce_time = 200
 button_pressed = False
@@ -130,12 +128,12 @@ def message_callback(topic, msg):
 
 # Check the temperature and send commands to heating or cooling system
 def check_temperature():
-    global current_user, manual_temperature
-    if current_user or mode == 'manual':
+    global at_home_users, manual_temperature
+    if at_home_users or mode == 'manual':
         if mode == 'manual':
             target_temp = manual_temperature
         else:
-            user_prefs = users_card_id[current_user]
+            user_prefs = next(iter(users_card_id.values()))
             target_temp = user_prefs['summer'] if current_season == 'summer' else user_prefs['winter']
 
         if current_season == 'summer' and current_temperature > target_temp:
@@ -153,7 +151,7 @@ def check_temperature():
 
 # Scan for RFID cards
 def scan_rfid():
-    global current_user
+    global at_home_users
     reader.init()
     (stat, tag_type) = reader.request(reader.REQIDL)
     if stat == reader.OK:
@@ -161,8 +159,15 @@ def scan_rfid():
         if stat == reader.OK:
             card = int.from_bytes(bytes(uid), "little")
             if card in users_card_id:
-                current_user = card
-                print(f"User {card} identified with preferences: {users_card_id[card]}")
+                if card in at_home_users:
+                    at_home_users.remove(card)
+                    print(f"User {card} is leaving.")
+                    if not at_home_users:
+                        client.publish(topic_ac_control, json.dumps({'command': 'stop_cooling'}))
+                        client.publish(topic_heating_control, json.dumps({'command': 'stop_heating'}))
+                else:
+                    at_home_users.add(card)
+                    print(f"User {card} identified with preferences: {users_card_id[card]}")
             else:
                 print("Unknown user")
                 add_new_user(card, users_card_id)
