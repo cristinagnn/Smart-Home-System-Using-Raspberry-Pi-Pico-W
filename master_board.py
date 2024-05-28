@@ -61,6 +61,7 @@ def load_users_from_file():
         print("No users file found, starting with an empty dictionary.")
     except Exception as e:
         print(f"Failed to decode JSON, starting with an empty dictionary. Error: {e}")
+    return {}
 
 def add_new_user(card, users_card_id):
     response = input("Do you want to add the user? (yes/no): ").strip().lower()
